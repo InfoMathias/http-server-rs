@@ -29,7 +29,8 @@ impl Router {
 
     pub fn respond(&self, stream: &TcpStream, directory: &str) -> bool {
 
-        let (method, path, headers, body) = Self::parse_routing_args(&stream);
+        let (method, path, mut headers, body) = Self::parse_routing_args(&stream);
+        Self::negociate_encoding(&mut headers);
         let response = self.handle(&path, &method, &headers, &directory, &body);
 
         
@@ -54,8 +55,6 @@ impl Router {
         directory: &str,
         body: &str,
     ) -> Response {
-
-        println!("{} {}", method, path);
 
         for (route_path, methods_map) in &self.routes {
             if let Some(mut params) = Self::match_path(route_path, path) {
@@ -151,6 +150,14 @@ impl Router {
         };
 
         (method, path, headers_map, body)
+    }
+
+    fn negociate_encoding(headers: &mut HashMap<String, String>) {
+        if headers.iter().any(|(key, value)| {
+            key.to_lowercase() == "accept-encoding" && value == "gzip"
+        }) {
+            headers.insert("Content-Encoding: ".to_owned(), "g-zip".to_owned());
+        }
     }
 
 }

@@ -40,12 +40,6 @@ impl Response {
             write!(out, "{}: {}\r\n", name, value)?;
         }
         write!(out, "Content-Length: {}\r\n\r\n", self.body.len())?;
-
-        if self.headers.iter().any(|(key, value)| {
-            key == "Accept-Encoding" && value == "gzip"
-        }) {
-            write!(out, "Content-Encoding: gzip\r\n\r\n")?;
-        }
         out.extend_from_slice(&self.body);
         stream.write_all(&out)
     }

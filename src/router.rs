@@ -156,10 +156,13 @@ impl Router {
 
     fn negociate_encoding(headers: &HashMap<String, String>) -> Option<String> {
         let accepted = headers.get("accept-encoding")?;
-        if accepted == "gzip" {
-            Some("gzip".to_string())
-        } else {
-            None
-        }
+
+        let encoding = accepted
+            .split(',')
+            .map(str::trim)
+            .find(|x| *x == "gzip")
+            .map(str::to_owned);
+
+        encoding
     }
 }

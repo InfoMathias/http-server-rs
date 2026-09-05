@@ -5,6 +5,7 @@ use std::{
 };
 
 use crate::http::Response;
+use flate2::{write::GzEncoder, Compression};
 
 type Handler = Box<dyn Fn(&HashMap<String, String>) -> Response + Send + Sync>;
 
@@ -33,6 +34,11 @@ impl Router {
         let mut response = self.handle(&path, &method, &headers, &directory, &body);
         if let Some(encoding) = Self::negociate_encoding(&headers) {
             response = response.with_header("Content-Encoding", &encoding);
+            if encoding == "gzip" {
+                  let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+                  encoder.write_all(response.body.as_slice()).unwrap();
+                  response.with_body(encoder.finish().unwrap());
+            }
         }
 
         

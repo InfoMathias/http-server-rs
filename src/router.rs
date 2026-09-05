@@ -156,7 +156,7 @@ impl Router {
         if headers.iter().any(|(key, value)| {
             key.to_lowercase() == "accept-encoding" && value == "gzip"
         }) {
-            headers.insert("Content-Encoding: ".to_owned(), "g-zip".to_owned());
+            headers.insert("Content-Encoding: ".to_owned(), "gzip".to_owned());
         }
     }
 

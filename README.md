@@ -14,7 +14,7 @@ The goal was to start from a bare TCP socket and gradually build a fully functio
 - **Concurrent Connections** – Handles multiple clients at once using threads.
 - **Static File Serving** – Returns files from disk with correct headers.
 - **Request Body Parsing** – Reads POST/PUT bodies for dynamic handling.
-<!--- - **HTTP Compression** – Supports gzip and multiple compression schemes. --->
+- **HTTP Compression** – Negotiates `Accept-Encoding` and gzip-compresses response bodies.
 - **Persistent Connections** – Keeps TCP connections open for multiple requests.
 - **Graceful Connection Closure** – Cleans up resources properly after use.
 
@@ -53,6 +53,9 @@ curl http://localhost:4221/files/test.txt
 ### 4. Upload a file
 curl -X POST http://localhost:4221/files/new.txt \
      --data 'This is file content'
+
+### 5. Request a gzip-compressed response
+curl http://localhost:4221/echo/hello -H "Accept-Encoding: gzip" --compressed
 
 ---
 

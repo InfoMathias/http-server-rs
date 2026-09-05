@@ -4,12 +4,13 @@ use std::io::Write;
 use std::path::Path;
 
 use crate::Router;
+use crate::http::Response;
 
 pub fn build_routes(router: &mut Router) {
     router.add_route(
         "/", 
         "GET",
-        Box::new(|_params: &HashMap<String, String>| (200, "OK\r\n\r\n".to_string())),
+        Box::new(|_params: &HashMap<String, String>| Response::new(200))
     );
 
     router.add_route(
@@ -56,77 +57,53 @@ pub fn build_routes(router: &mut Router) {
     );
 }
 
-fn echo(val: &str) -> (u16, String) {
-    println!("{}", val);
-
-    (200, format!(
-        "OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}",
-        val.len(),
-        val
-    ))
+fn echo(val: &str) -> Response {
+    Response::new(200)
+        .with_header("Content-Type", "text/plain")
+        .with_body(val)
 }
 
-fn format_user_agent(agent: &str) -> (u16, String) {
-    println!("{}", agent);
-
-    (200, format!(
-        "OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}",
-        agent.len(),
-        agent
-    ))
+fn format_user_agent(agent: &str) -> Response {
+    Response::new(200)
+        .with_header("Content-Type", "text/plain")
+        .with_body(agent)
 }
 
-fn send_file_content(file_name: &str, directory: &str) -> (u16, String) {
-    println!("{}", file_name);
-    println!("{}", directory);
-
-    
+fn send_file_content(file_name: &str, directory: &str) -> Response {
     let path_str = format!("{}{}", directory, file_name);
     let path = Path::new(&path_str);
     
     if !path.exists() {
-        return (404, "Not Found\r\n\r\n".to_string()) 
+        return Response::new(404);
     }
 
-    let file_content = match fs::read_to_string(path) {
+    let file_content = match fs::read(path) {
         Ok(content) => content,
-        Err(_) => return (500, "Internal Server Error\r\n\r\n".to_string()),
+        Err(_) => return Response::new(500),
     };
 
-    (
-        200, 
-        format!(
-            "OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {}\r\n\r\n{}", 
-            file_content.len(), 
-            file_content
-        ) 
-    )
+    Response::new(200)
+        .with_header("Content-Type", "application/octet-stream")
+        .with_body(file_content)
 }
 
-fn create_file(file_name: &str, directory: &str, file_content: &str) -> (u16, String) {
-    println!("{}", file_name);
-    println!("{}", directory);
-    println!("{}", file_content);
-
+fn create_file(file_name: &str, directory: &str, file_content: &str) -> Response {
     if let Err(e) = fs::create_dir_all(directory) {
-        return (500, format!("Failed to create directory: {}", e));
+        return Response::new(500).with_body(format!("Failed to create directory: {}", e));
     }
 
     let file_path = Path::new(directory).join(file_name);
 
     let mut file = match File::create(file_path) {
         Ok(f) => f,
-        Err(e) => return (500, format!("Failed to create file: {}", e)),
+        Err(e) => return Response::new(500).with_body( format!("Failed to create file: {}", e)),
     };
 
     if let Err(e) = file.write_all(file_content.as_bytes()) {
-        return (500, format!("Failed to write to file: {}", e));
+        return Response::new(500).with_body(format!("Failed to write to file: {}", e));
     }
     
-    (
-        201, 
-        "Created\r\n\r\n".to_string()
-    )
+        Response::new(201)
 }
 
 

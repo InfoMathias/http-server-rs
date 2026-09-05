@@ -4,7 +4,9 @@ use std::{
     collections::{HashMap},
 };
 
-type Handler = Box<dyn Fn(&HashMap<String, String>) -> (u16, String) + Send + Sync>;
+use crate::http::Response;
+
+type Handler = Box<dyn Fn(&HashMap<String, String>) -> Response + Send + Sync>;
 
 pub struct Router {
     routes: HashMap<String, HashMap<String, Handler>>,
@@ -25,10 +27,10 @@ impl Router {
                 .insert(method.to_string(), Box::new(handler));
     }
 
-    pub fn respond(&self, mut stream: &TcpStream, directory: &str) -> bool {
+    pub fn respond(&self, stream: &TcpStream, directory: &str) -> bool {
 
         let (method, path, headers, body) = Self::parse_routing_args(&stream);
-        let (status, body) = self.handle(&path, &method, &headers, &directory, &body);
+        let response = self.handle(&path, &method, &headers, &directory, &body);
 
         
         let keep_alive = match headers.get("connection") {
@@ -36,20 +38,12 @@ impl Router {
             _ => true,
         };
 
-        let response_headers = format!( "\r\nConnection: {}", if keep_alive { "keep-alive" } else { "close" } );
+        let response = response.with_header(
+            "Connection",
+            if keep_alive { "keep-alive" } else { "close" },
+        );
 
-        let mut response = format!("HTTP/1.1 {} {}", status.to_string(), body);
-
-        println!("{}", response);
-
-        if let Some(pos) = response.find("\r\n\r\n") {
-            response.insert_str(pos, &response_headers);
-        }
-        println!("{}", response);
-
-        stream.write_all(response.as_bytes()).unwrap();
-
-        keep_alive
+        response.write_to(stream).is_ok() && keep_alive
     }
 
     pub fn handle(
@@ -59,7 +53,7 @@ impl Router {
         headers: &HashMap<String, String>,
         directory: &str,
         body: &str,
-    ) -> (u16, String) {
+    ) -> Response {
 
         println!("{} {}", method, path);
 
@@ -78,26 +72,16 @@ impl Router {
                     params.insert("body".to_string(), body.to_string());
                 }
 
-                println!("{:?}", headers);
-                println!("{:?}", params);
-                println!("{}", body);
-
                 if let Some(handler) = methods_map.get(method) {
-                    
-                    let (code, message) = handler(&params);
-
-                    return (code, format!("{}", message));
+                    return handler(&params);
                 } else {
                     let allowed: Vec<String> = methods_map.keys().cloned().collect();
-                    return (
-                        405,
-                        format!("Method Not Allowed\nAllow: {}", allowed.join(", ")),
-                    );
+                    return Response::new(405).with_header("Allow", &allowed.join(", "));
                 }
             }
         }
 
-        (404, "Not Found\r\n\r\n".to_string())
+        Response::new(404)
     }
 
     fn match_path(route: &str, actual: &str) -> Option<HashMap<String, String>> {

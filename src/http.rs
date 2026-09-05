@@ -37,7 +37,7 @@ impl Response {
         let mut out = Vec::new();
         write!(out, "HTTP/1.1 {} {}\r\n", self.status, self.reason())?;
         for (name, value) in &self.headers {
-            write!(out, "{} : {}\r\n", name, value)?;
+            write!(out, "{}: {}\r\n", name, value)?;
         }
         write!(out, "Content-Length: {}\r\n\r\n", self.body.len())?;
         out.extend_from_slice(&self.body);

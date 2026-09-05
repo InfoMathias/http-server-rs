@@ -37,7 +37,7 @@ impl Router {
             if encoding == "gzip" {
                   let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
                   encoder.write_all(response.body.as_slice()).unwrap();
-                  response.with_body(encoder.finish().unwrap());
+                  response = response.with_body(encoder.finish().unwrap());
             }
         }
 

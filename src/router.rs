@@ -29,9 +29,11 @@ impl Router {
 
     pub fn respond(&self, stream: &TcpStream, directory: &str) -> bool {
 
-        let (method, path, mut headers, body) = Self::parse_routing_args(&stream);
-        Self::negociate_encoding(&mut headers);
-        let response = self.handle(&path, &method, &headers, &directory, &body);
+        let (method, path, headers, body) = Self::parse_routing_args(&stream);
+        let mut response = self.handle(&path, &method, &headers, &directory, &body);
+        if let Some(encoding) = Self::negociate_encoding(&headers) {
+            response = response.with_header("Content-Encoding", &encoding);
+        }
 
         
         let keep_alive = match headers.get("connection") {
@@ -152,12 +154,12 @@ impl Router {
         (method, path, headers_map, body)
     }
 
-    fn negociate_encoding(headers: &mut HashMap<String, String>) {
-        if headers.iter().any(|(key, value)| {
-            key.to_lowercase() == "accept-encoding" && value == "gzip"
-        }) {
-            headers.insert("Content-Encoding: ".to_owned(), "gzip".to_owned());
+    fn negociate_encoding(headers: &HashMap<String, String>) -> Option<String> {
+        let accepted = headers.get("accept-encoding")?;
+        if accepted == "gzip" {
+            Some("gzip".to_string())
+        } else {
+            None
         }
     }
-
 }

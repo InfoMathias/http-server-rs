@@ -7,6 +7,7 @@ use std::{
 };
 
 mod routes;
+mod http;
 mod router;
 use crate::router::Router;
 
